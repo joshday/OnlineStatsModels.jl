@@ -3,6 +3,7 @@ module OnlineStatsModels
 import OnlineStatsBase: OnlineStat, _fit!, value, nobs, LearningRate
 using Requires
 
+smooth(a, b, w) = a + w * (b - a)
 
 include("gradient_algorithms.jl")
 

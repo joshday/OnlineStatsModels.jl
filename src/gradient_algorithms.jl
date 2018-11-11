@@ -22,21 +22,38 @@ _fit!(o::SG{T,G,F!}, x) where {T,G,F!} = (o.n +=1 ; F!(o.g, o.θ, x))
 
 #-----------------------------------------------------------------------# SGStat
 abstract type SGStat{T} <: OnlineStat{T} end
-value(o::SGStat) = o.sg.θ
-nobs(o::SGStat) = o.sg.n
+value(o::SGStat) = o.grad.θ
+nobs(o::SGStat) = o.grad.n
 
-#-----------------------------------------------------------------------# SGD 
-struct SGD{T, S<:SG{T}, W} <: SGStat{T}
-    sg::S
+_fit!(o::SGStat, x) = (_fit!(o.grad, x); update!(o))
+
+#-----------------------------------------------------------------------# Sgd 
+struct Sgd{T, S<:SG{T}, W} <: SGStat{T}
+    grad::S
     rate::W
 end
-SGD(sg::SG; rate = LearningRate()) = SGD(sg, rate)
+Sgd(grad::SG; rate = LearningRate()) = Sgd(grad, rate)
 
-function _fit!(o::SGD, x)
-    _fit!(o.sg, x)
+function update!(o::Sgd)
     γ = o.rate(nobs(o))
-    @simd for j in eachindex(o.sg.θ)
-        @inbounds o.sg.θ[j] -= γ * o.sg.g[j]
+    @simd for j in eachindex(o.grad.θ)
+        @inbounds o.grad.θ[j] -= γ * o.grad.g[j]
     end
 end
 
+#-----------------------------------------------------------------------# Adagrad
+struct Adagrad{T, S, T2<:SG{T, S}, W} <: SGStat{T}
+    grad::T2
+    g::S
+    rate::W
+end
+Adagrad(sg::SG; rate=LearningRate()) = Adagrad(sg, copy(sg.g), rate)
+
+function update!(o::Adagrad)
+    γ = o.rate(nobs(o))
+    for j in eachindex(o.grad.θ)
+        ∇j = o.grad.g[j]
+        o.g[j] = smooth(o.g[j], ∇j * ∇j, γ)
+        o.grad.θ[j] -= γ * inv(sqrt(o.g[j] + 1e-8)) * ∇j
+    end
+end

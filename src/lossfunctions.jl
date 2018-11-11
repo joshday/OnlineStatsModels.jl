@@ -10,6 +10,4 @@ function SG(p::Int, l::LossFunctions.Loss, T::Type = Float64)
     SG(zeros(T, p), f!, Tuple{AbstractVector, Number})
 end
 
-function SGD(p::Int, l::LossFunctions.Loss, T::Type = Float64; kw...) 
-    SGD(SG(p, l, T); kw...)
-end
+SG(l::LossFunctions.Loss, p::Int, T::Type = Float64) = SG(p, l, T)
